@@ -66,3 +66,7 @@ df['disposable_income'] = round((df['gross_income'] - df['tax'] - df['expenditur
 
 df.to_csv('output.csv', index=False)
 print("Done! Columns in output:", df.columns.tolist())
+
+#df = pd.read_csv('output.csv')
+
+#print((df['disposable_income'] < 0).sum())
