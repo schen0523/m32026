@@ -19,14 +19,16 @@ df['gender_male'] = (df[gender_col].str.strip().str.lower() == 'male').astype(in
 df = df.drop(columns=[race_col, gender_col,  'avg_income', 'population_count'])
 
 df['gross_income'] = round((
-    -113969.1915
-    + 551.9021 * df['age_mid']
-    + 10157.9867 * df['education_years']
-    + -4739.0145 * df['race_black']
-    + 100.9511 * df['race_hispanic']
-    + 4638.0633 * df['race_white']
-    + 26924.3719 * df['gender_male']
+    -99580.2730
+    + 552.8249 * df['age_mid']
+    + 9949.0918 * df['education_years']
+    - 18377.2417 * df['race_black']
+    - 13061.7844 * df['race_hispanic']
+    - 7141.9343 * df['race_white']
+    + 26809.1883 * df['gender_male']
 ), 2)
+
+
 
 marital_statuses = ['single', 'married']
 
@@ -66,3 +68,7 @@ df['disposable_income'] = round((df['gross_income'] - df['tax'] - df['expenditur
 
 df.to_csv('output.csv', index=False)
 print("Done! Columns in output:", df.columns.tolist())
+
+#df = pd.read_csv('output.csv')
+
+#print((df['disposable_income'] < 0).sum())
