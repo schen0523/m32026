@@ -450,8 +450,8 @@ def calculate_taxes(gross_income, marital_status, state):
     status = marital_status.lower().strip()
     if status not in ("single", "married"):
         raise ValueError("marital_status must be 'single' or 'married'")
-    if gross_income < 0:
-        raise ValueError("gross_income must be non-negative")
+    # if gross_income < 0:
+    #     raise ValueError("gross_income must be non-negative")
 
     # ── Federal income tax ─────────────────────────────────────────────────
     fed_std_ded     = STANDARD_DEDUCTION[status]
@@ -478,17 +478,17 @@ def calculate_taxes(gross_income, marital_status, state):
     effective_rate  = (total_tax / gross_income * 100) if gross_income > 0 else 0
     take_home       = gross_income - total_tax
 
-    return {
-        "gross_income":       round(gross_income, 2),
-        #"federal_tax":        round(federal_tax, 2),
-        #"fica":               round(fica, 2),
-        #"state_tax":          round(state_tax, 2),
-        "total_tax":          round(total_tax, 2),
-        #"effective_rate_pct": round(effective_rate, 2),
-        "take_home":          round(take_home, 2),
-    }
+    # return {
+    #     "gross_income":       round(gross_income, 2),
+    #     "federal_tax":        round(federal_tax, 2),
+    #     "fica":               round(fica, 2),
+    #     "state_tax":          round(state_tax, 2),
+    #     "total_tax":          round(total_tax, 2),
+    #     #"effective_rate_pct": round(effective_rate, 2),
+    #     "take_home":          round(take_home, 2),
+    # }
 
-    #return total_tax
+    return total_tax
 
 # ─────────────────────────────────────────────
 # APPLY TO A DATAFRAME
@@ -520,32 +520,224 @@ def apply_to_dataframe(df,
     tax_df = tax_df.drop(columns=["gross_income"], errors="ignore")
     return pd.concat([df.reset_index(drop=True), tax_df], axis=1)
 
+def calculate_gross_income(row):
+    """
+    Calculate gross income based on demographic factors.
+    This is a placeholder - replace with your actual equation.
+    
+    Example equation parameters (adjust based on your research):
+    - Base income: $30,000
+    - Each year of education adds $3,000
+    - Age factor: increases up to age 50, then plateaus
+    - Gender and race adjustments (based on wage gap data)
+    """
+    # Base income
+    income = 30000
+    
+    # Education effect
+    income += row['education_years'] * 3000
+    
+    # Age effect (quadratic to peak around 50)
+    age_factor = -0.2 * (row['age'] - 50)**2 + 5000
+    income += max(0, age_factor)
+    
+    # Gender effect (example: wage gap adjustment)
+    if row['gender'].lower() == 'female':
+        income *= 0.82  # 18% wage gap
+    
+    # Race effect (example adjustments - use actual data)
+    race_adjustments = {
+        'white': 1.0,
+        'black': 0.87,
+        'hispanic': 0.85,
+        'asian': 1.05,
+        'other': 0.92
+    }
+    income *= race_adjustments.get(row['race'].lower(), 1.0)
+    
+    return round(income, 2)
+
+def generate_all_combinations(df):
+    """
+    Generate all combinations of marital status and state for each person.
+    """
+    # List of all marital statuses and states
+    marital_statuses = ['single', 'married']
+    states = [
+        'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado',
+        'Connecticut', 'Delaware', 'Florida', 'Georgia', 'Hawaii', 'Idaho',
+        'Illinois', 'Indiana', 'Iowa', 'Kansas', 'Kentucky', 'Louisiana',
+        'Maine', 'Maryland', 'Massachusetts', 'Michigan', 'Minnesota',
+        'Mississippi', 'Missouri', 'Montana', 'Nebraska', 'Nevada',
+        'New Hampshire', 'New Jersey', 'New Mexico', 'New York',
+        'North Carolina', 'North Dakota', 'Ohio', 'Oklahoma', 'Oregon',
+        'Pennsylvania', 'Rhode Island', 'South Carolina', 'South Dakota',
+        'Tennessee', 'Texas', 'Utah', 'Vermont', 'Virginia', 'Washington',
+        'West Virginia', 'Wisconsin', 'Wyoming', 'Washington DC'
+    ]
+    
+    # Create all combinations for each person
+    expanded_rows = []
+    
+    for idx, person in df.iterrows():
+        # Calculate gross income once per person
+        gross_income = calculate_gross_income(person)
+        
+        for marital_status, state in itertools.product(marital_statuses, states):
+            new_row = person.to_dict()
+            new_row['gross_income'] = gross_income
+            new_row['marital_status'] = marital_status
+            new_row['state'] = state
+            expanded_rows.append(new_row)
+    
+    return pd.DataFrame(expanded_rows)
+
+def process_with_tax_calculator(df_with_combinations):
+    """
+    Apply the tax calculator to each row.
+    """
+    # Import the tax calculator function
+    # Make sure tax_calculator.py is in the same directory
+    from tax_calculator import calculate_taxes
+    
+    # Calculate taxes for each row
+    tax_results = []
+    
+    for idx, row in df_with_combinations.iterrows():
+        tax_info = calculate_taxes(
+            row['gross_income'],
+            row['marital_status'],
+            row['state']
+        )
+        
+        result = row.to_dict()
+        result['total_tax'] = tax_info['total_tax']
+        result['federal_tax'] = tax_info['federal_tax']
+        result['fica'] = tax_info['fica']
+        result['state_tax'] = tax_info['state_tax']
+        result['take_home'] = tax_info['take_home']
+        
+        tax_results.append(result)
+    
+    return pd.DataFrame(tax_results)
+
+def expenditure(age):
+    if (age == 21):
+        return 30373
+    elif (age == 30):
+        return 48087
+    elif (age == 40):
+        return 58784
+    elif (age == 50):
+        return 60524
+    elif (age == 60):
+        return 55892
+    elif (age == 70):
+        return 46757
+    elif (age == 73):
+        return 34382
+    else:
+        return 0
+
+def main(input_csv_path, output_csv_path):
+    """
+    Main function to process the data.
+    
+    Parameters:
+    input_csv_path: path to input CSV with demographic data
+    output_csv_path: path where output CSV will be saved
+    """
+    
+    # Read input CSV
+    print(f"Reading input file: {input_csv_path}")
+    df_input = pd.read_csv(input_csv_path)
+    
+    # Verify required columns exist
+    required_cols = ['race', 'gender', 'education_years', 'age']
+    missing_cols = [col for col in required_cols if col not in df_input.columns]
+    if missing_cols:
+        raise ValueError(f"Missing required columns: {missing_cols}")
+    
+    print(f"Found {len(df_input)} persons in input file")
+    
+    # Generate all combinations
+    print("Generating all marital status and state combinations...")
+    df_combinations = generate_all_combinations(df_input)
+    print(f"Generated {len(df_combinations)} combinations")
+    
+    # Calculate taxes for all combinations
+    print("Calculating taxes for all combinations...")
+    df_output = process_with_tax_calculator(df_combinations)
+    
+    # Reorder columns to put key variables first
+    col_order = ['race', 'gender', 'education_years', 'age', 
+                 'gross_income', 'marital_status', 'state',
+                 'total_tax', 'federal_tax', 'fica', 'state_tax', 'take_home']
+    
+    # Add any other original columns that might exist
+    other_cols = [col for col in df_output.columns if col not in col_order]
+    df_output = df_output[col_order + other_cols]
+    
+    # Save to CSV
+    df_output.to_csv(output_csv_path, index=False)
+    print(f"\nResults saved to: {output_csv_path}")
+    print(f"Output contains {len(df_output)} rows")
+    print(f"Columns: {', '.join(df_output.columns)}")
+    
+    # Display sample
+    print("\nSample of output (first 5 rows):")
+    print(df_output.head().to_string())
+    
+    return df_output
+
+# Example usage
+# if __name__ == "__main__":
+#     # Example input file
+#     input_file = "output.csv"  # Your input CSV file
+#     output_file = "tax_calculations.csv"
+    
+#     # Create a sample input file for demonstration
+#     sample_data = pd.DataFrame({
+#         'race': ['white', 'black', 'asian', 'hispanic', 'white'],
+#         'gender': ['male', 'female', 'male', 'female', 'female'],
+#         'education_years': [12, 16, 18, 10, 14],
+#         'age': [25, 35, 45, 55, 30]
+#     })
+#     sample_data.to_csv("sample_input.csv", index=False)
+#     print("Created sample input file: sample_input.csv")
+    
+#     # Run the main function
+#     result_df = main("sample_input.csv", output_file)
+
 
 # ─────────────────────────────────────────────
 # EXAMPLE USAGE
 # ─────────────────────────────────────────────
 
-if __name__ == "__main__":
-    import pandas as pd
+# if __name__ == "__main__":
+#     import pandas as pd
 
-    # ── Single person examples ─────────────────────────────────────────────
-    examples = [
-        (40000,  "single",  "Texas"),
-        (75000,  "single",  "California"),
-        (75000,  "married", "California"),
-        (120000, "single",  "New York"),
-        (200000, "married", "Florida"),
-        (50000,  "single",  "Oregon"),
-    ]
+#     # ── Single person examples ─────────────────────────────────────────────
+#     examples = [
+#         (40000,  "single",  "Texas"),
+#         (75000,  "single",  "California"),
+#         (75000,  "married", "California"),
+#         (120000, "single",  "New York"),
+#         (200000, "married", "Florida"),
+#         (50000,  "single",  "Oregon"),
+#     ]
 
-    print("=" * 70)
-    print(f"{'Income':>10} {'Status':>8} {'State':<15} {'Total Tax':>9} {'Take-Home':>11}")
-    print("-" * 70)
-    for income, status, state in examples:
-        r = calculate_taxes(income, status, state)
-        print(f"${r['gross_income']:>9,.0f} {status:>8} {state:<15} "
-              f"${r['total_tax']:>8,.0f} ${r['take_home']:>10,.0f}")
-    print("=" * 70)
+#     print("=" * 70)
+#     print(f"{'Income':>10} {'Status':>8} {'State':<15} {'Federal':>9} "
+#           f"{'FICA':>7} {'State':>7} {'Total':>9} {'Take-Home':>11}")
+#     print("-" * 70)
+#     for income, status, state in examples:
+#         r = calculate_taxes(income, status, state)
+#         print(f"${r['gross_income']:>9,.0f} {status:>8} {state:<15} "
+#               f"${r['federal_tax']:>8,.0f} ${r['fica']:>6,.0f} "
+#               f"${r['state_tax']:>6,.0f} ${r['total_tax']:>8,.0f} "
+#               f"${r['take_home']:>10,.0f}")
+#     print("=" * 70)
 
     # ── DataFrame example ──────────────────────────────────────────────────
     # print("\nDataFrame example:")
