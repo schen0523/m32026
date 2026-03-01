@@ -52,8 +52,8 @@ FEDERAL_BRACKETS = {
 # 2025 STANDARD DEDUCTIONS
 # ─────────────────────────────────────────────
 STANDARD_DEDUCTION = {
-    "single":  15000,
-    "married": 30000,
+    "single":  14600,
+    "married": 29200,
 }
 
 # ─────────────────────────────────────────────
@@ -63,7 +63,7 @@ FICA_RATE            = 0.0765   # Employee share: 6.2% SS + 1.45% Medicare
 SS_WAGE_BASE         = 168600   # Social Security wage base cap (2024)
 ADDITIONAL_MEDICARE  = 0.009    # Extra 0.9% on wages above threshold
 ADDITIONAL_MEDICARE_THRESHOLD = {
-    "single":  200000,
+    "single":  125000,
     "married": 250000,
 }
 
@@ -480,13 +480,15 @@ def calculate_taxes(gross_income, marital_status, state):
 
     return {
         "gross_income":       round(gross_income, 2),
-        "federal_tax":        round(federal_tax, 2),
-        "fica":               round(fica, 2),
-        "state_tax":          round(state_tax, 2),
+        #"federal_tax":        round(federal_tax, 2),
+        #"fica":               round(fica, 2),
+        #"state_tax":          round(state_tax, 2),
         "total_tax":          round(total_tax, 2),
-        "effective_rate_pct": round(effective_rate, 2),
+        #"effective_rate_pct": round(effective_rate, 2),
         "take_home":          round(take_home, 2),
     }
+
+    #return total_tax
 
 # ─────────────────────────────────────────────
 # APPLY TO A DATAFRAME
@@ -537,27 +539,24 @@ if __name__ == "__main__":
     ]
 
     print("=" * 70)
-    print(f"{'Income':>10} {'Status':>8} {'State':<15} {'Federal':>9} "
-          f"{'FICA':>7} {'State':>7} {'Total':>9} {'Eff%':>6} {'Take-Home':>11}")
+    print(f"{'Income':>10} {'Status':>8} {'State':<15} {'Total Tax':>9} {'Take-Home':>11}")
     print("-" * 70)
     for income, status, state in examples:
         r = calculate_taxes(income, status, state)
         print(f"${r['gross_income']:>9,.0f} {status:>8} {state:<15} "
-              f"${r['federal_tax']:>8,.0f} ${r['fica']:>6,.0f} "
-              f"${r['state_tax']:>6,.0f} ${r['total_tax']:>8,.0f} "
-              f"{r['effective_rate_pct']:>5.1f}% ${r['take_home']:>10,.0f}")
+              f"${r['total_tax']:>8,.0f} ${r['take_home']:>10,.0f}")
     print("=" * 70)
 
     # ── DataFrame example ──────────────────────────────────────────────────
-    print("\nDataFrame example:")
-    sample_data = {
-        "name":           ["Alice", "Bob", "Carol"],
-        "income":         [60000, 95000, 150000],
-        "marital_status": ["single", "married", "single"],
-        "state":          ["Texas", "New York", "California"],
-        "age":            [28, 45, 35],
-    }
-    df = pd.DataFrame(sample_data)
-    df_result = apply_to_dataframe(df)
-    print(df_result[["name", "income", "state", "total_tax",
-                      "effective_rate_pct", "take_home"]].to_string(index=False))
+    # print("\nDataFrame example:")
+    # sample_data = {
+    #     "name":           ["Alice", "Bob", "Carol"],
+    #     "income":         [60000, 95000, 150000],
+    #     "marital_status": ["single", "married", "single"],
+    #     "state":          ["Texas", "New York", "California"],
+    #     "age":            [28, 45, 35],
+    # }
+    # df = pd.DataFrame(sample_data)
+    # df_result = apply_to_dataframe(df)
+    # print(df_result[["name", "income", "state", "total_tax",
+    #                   "effective_rate_pct", "take_home"]].to_string(index=False))
