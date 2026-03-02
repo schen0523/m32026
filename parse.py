@@ -52,7 +52,7 @@ df = df.loc[df.index.repeat(len(combinations))].reset_index(drop=True)
 df['marital_status'] = [c[0] for c in combinations] * (len(df) // len(combinations))
 df['state'] = [c[1] for c in combinations] * (len(df) // len(combinations))
 
-#df['tax'] = calculate_taxes(df['gross_income'], df['marital_status'], df['state'])
+df['tax'] = calculate_taxes(df['gross_income'], df['marital_status'], df['state'])
 
 df['tax'] = round(df.apply(
     lambda row: calculate_taxes(row['gross_income'], row['marital_status'], row['state']),
@@ -67,8 +67,8 @@ df['expenditure'] = round(df.apply(
 df['disposable_income'] = round((df['gross_income'] - df['tax'] - df['expenditure']), 2)
 
 df.to_csv('output.csv', index=False)
-print("Done! Columns in output:", df.columns.tolist())
+print("Done!")
 
 #df = pd.read_csv('output.csv')
-
 #print((df['disposable_income'] < 0).sum())
+#print(calculate_taxes(90881.77, "single", "California"))
