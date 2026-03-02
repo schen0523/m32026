@@ -120,10 +120,10 @@ risk = 1 / (1 + math.exp(-z))
 
 print(f'risk: {risk} \n disposableincome: {disposable_income}')
 
-house_edge = -0.08
+house_edge = -0.15
 mean = (disposable_income)*(risk)*(house_edge)
 
-print(f'mean: {mean} SD: {risk}')
+print(f'mean: {mean} )SD: {math.sqrt(abs(mean) * (1-risk))} risk: {risk}')
 
 
 # ═══════════════════════════════════════════════════════════════════
